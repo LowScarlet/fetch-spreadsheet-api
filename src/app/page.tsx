@@ -1,101 +1,148 @@
-import Image from "next/image";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
+
+import { useEffect, useState } from "react";
+import { Chart } from "react-google-charts";
+
+interface SheetRow {
+  date: string;
+  name: string;
+  age: string;
+  gender: string;
+  address: string;
+  rating: string;
+  platforms: string;
+  categories: string;
+  reason: string;
+  feedback: string;
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [sheetData, setSheetData] = useState<SheetRow[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const response = await fetch("/api/sheet");
+        if (!response.ok) {
+          throw new Error("Failed to fetch data");
+        }
+        const { values }: { values: string[][] } = await response.json();
+
+        const formattedData: SheetRow[] = values.map((row) => ({
+          date: row[0] || "",
+          name: row[1] || "",
+          age: row[2] || "",
+          gender: row[3] || "",
+          address: row[4] || "",
+          rating: row[5] || "",
+          platforms: row[6] || "",
+          categories: row[7] || "",
+          reason: row[8] || "",
+          feedback: row[9] || "",
+        }));
+
+        setSheetData(formattedData);
+      } catch (err: any) {
+        setError(err.message);
+      }
+    }
+
+    fetchData();
+  }, []);
+
+  if (error) return <p>Error: {error}</p>;
+  if (!sheetData) return <p>Loading...</p>;
+
+  // Prepare data for the Table
+  const tableData = sheetData.map((row) => [
+    row.date,
+    row.name,
+    row.age,
+    row.gender,
+    row.address,
+    row.rating,
+    row.platforms,
+    row.categories,
+    row.reason,
+    row.feedback,
+  ]);
+
+  // Prepare data for the Bar Chart (Ratings)
+  const ratingCounts = sheetData.reduce((acc, row) => {
+    const rating = row.rating;
+    acc[rating] = (acc[rating] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const barChartData = [
+    ["Rating", "Jumlah"],
+    ...Object.entries(ratingCounts).map(([rating, count]) => [rating, count]),
+  ];
+
+  // Prepare data for the Pie Chart (Platforms)
+  const platformCounts = sheetData.reduce((acc, row) => {
+    const platforms = row.platforms.split(", ");
+    platforms.forEach((platform) => {
+      acc[platform] = (acc[platform] || 0) + 1;
+    });
+    return acc;
+  }, {} as Record<string, number>);
+
+  const pieChartData = [
+    ["Platform", "Jumlah"],
+    ...Object.entries(platformCounts).map(([platform, count]) => [platform, count]),
+  ];
+
+  return (
+    <div>
+      <h1>Data dari Google Spreadsheet</h1>
+
+      {/* Tabel menggunakan Google Visualization */}
+      <div style={{ overflowX: "auto" }}>
+        <Chart
+          chartType="Table"
+          width="100%"
+          height="400px"
+          loader={<div>Loading Chart</div>}
+          data={[["Tanggal", "Nama", "Umur", "Gender", "Alamat", "Rating", "Platform", "Kategori", "Alasan", "Feedback"], ...tableData]}
+        />
+      </div>
+
+      {/* Grafik Bar menggunakan Google Visualization */}
+      <div style={{ width: "50%", margin: "auto", marginTop: "2rem" }}>
+        <h2>Grafik Bar: Jumlah Rating</h2>
+        <Chart
+          chartType="Bar"
+          width="100%"
+          height="400px"
+          loader={<div>Loading Chart</div>}
+          data={barChartData}
+          options={{
+            chart: {
+              title: "Jumlah Rating",
+              subtitle: "Jumlah berdasarkan rating",
+            },
+          }}
+        />
+      </div>
+
+      {/* Grafik Pie menggunakan Google Visualization */}
+      <div style={{ width: "50%", margin: "auto", marginTop: "2rem" }}>
+        <h2>Grafik Pie: Platform Populer</h2>
+        <Chart
+          chartType="PieChart"
+          width="100%"
+          height="400px"
+          loader={<div>Loading Chart</div>}
+          data={pieChartData}
+          options={{
+            title: "Platform Populer",
+            is3D: true,
+          }}
+        />
+      </div>
     </div>
   );
 }
