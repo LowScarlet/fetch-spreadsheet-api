@@ -1,3 +1,5 @@
+import { NextResponse } from "next/server";
+
 export async function GET() {
   return NextResponse.json({
     SPREADSHEET_ID: process.env.SPREADSHEET_ID,
